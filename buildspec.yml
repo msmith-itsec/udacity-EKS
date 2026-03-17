@@ -16,7 +16,6 @@ phases:
       - ls -lh /usr/local/bin/kubectl
       - kubectl version --client
       - python -m pip install --upgrade pip
-      - apt-get update && apt-get -y install jq
       - pip install --upgrade awscli pytest
 
   pre_build:
