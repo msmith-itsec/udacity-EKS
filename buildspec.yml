@@ -8,21 +8,13 @@ phases:
       - echo "Starting Docker daemon"
       - nohup /usr/local/bin/dockerd --host=unix:///var/run/docker.sock --host=tcp://127.0.0.1:2375 --storage-driver=overlay2 &
       - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
-
-      # FIXED: Correct kubectl version
-      - curl -Lo aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.29.12/2024-04-19/bin/linux/amd64/aws-iam-authenticator
-      - curl -Lo kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.29.12/2024-04-19/bin/linux/amd64/kubectl
-
-      - chmod +x ./kubectl ./aws-iam-authenticator
-      - mv ./kubectl /usr/local/bin/kubectl
-      - export PATH=$PWD:$PATH
-      - echo 'export PATH=$PWD:$PATH' >> $HOME/.bashrc
-
-      # Debug safety
-      - ls -l /usr/local/bin/kubectl
-      - kubectl version --client
-
+      - KUBECTL_VERSION=v1.29.15
+      - curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+      - chmod +x kubectl
+      - mv kubectl /usr/local/bin/kubectl
       - python --version
+      - ls -lh /usr/local/bin/kubectl
+      - kubectl version --client
       - python -m pip install --upgrade pip
       - apt-get update && apt-get -y install jq
       - pip install --upgrade awscli pytest
@@ -31,10 +23,7 @@ phases:
     commands:
       - TAG="$REPOSITORY_NAME.$REPOSITORY_BRANCH.$ENVIRONMENT_NAME.$(date +%Y-%m-%d.%H.%M.%S).$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)"
       - sed -i 's@CONTAINER_IMAGE@'"$REPOSITORY_URI:$TAG"'@' simple_jwt_api.yml
-
-      # FIXED: modern login
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $(echo $REPOSITORY_URI | cut -d/ -f1)
       - export KUBECONFIG=$HOME/.kube/config
       - ls -la
       - pip3 install -r requirements.txt
@@ -47,7 +36,9 @@ phases:
   post_build:
     commands:
       - docker push $REPOSITORY_URI:$TAG
-      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION
+      - echo $EKS_CLUSTER_NAME
+      - echo $EKS_KUBECTL_ROLE_ARN
+      - aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_DEFAULT_REGION --role-arn $EKS_KUBECTL_ROLE_ARN
       - kubectl apply -f simple_jwt_api.yml
       - printf '[{"name":"simple_jwt_api","imageUri":"%s"}]' $REPOSITORY_URI:$TAG > build.json
 
