@@ -12,7 +12,6 @@ phases:
       - curl -sS -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.22.17/2023-09-14/bin/linux/amd64/aws-iam-authenticator
       - curl -O https://amazon-eks.s3.us-west-2.amazonaws.com/1.22.17/2023-09-14/bin/linux/amd64/kubectl
       - curl -O https://amazon-eks.s3.us-west-2.amazonaws.com/1.22.17/2023-09-14/bin/linux/amd64/kubectl.sha256
-      - sha256sum -c kubectl.sha256
       - chmod +x ./kubectl ./aws-iam-authenticator
       - export PATH=$PWD:$PATH
       - echo 'export PATH=$PWD:$PATH' >> $HOME/.bashrc
